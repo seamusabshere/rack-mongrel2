@@ -31,7 +31,6 @@ module Rack
             next if req.nil? || req.disconnect?
             break if !running
 
-            script_name = ENV['RACK_RELATIVE_URL_ROOT'] || req.headers['PATTERN'].split('(', 2).first.gsub(/\/$/, '')
             env = {
               'rack.version' => Rack::VERSION,
               'rack.url_scheme' => 'http', # Only HTTP for now
@@ -43,8 +42,8 @@ module Rack
               'mongrel2.pattern' => req.headers['PATTERN'],
               'REQUEST_METHOD' => req.headers['METHOD'],
 				      'CONTENT_TYPE' => req.headers['content-type'],
-              'SCRIPT_NAME' => script_name,
-              'PATH_INFO' => req.headers['PATH'].gsub(script_name, ''),
+              'SCRIPT_NAME' => '', # match unicorn behavior
+              'PATH_INFO' => req.path,
               'QUERY_STRING' => req.headers['QUERY'] || ''
             }
 
