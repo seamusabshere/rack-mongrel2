@@ -1,4 +1,4 @@
-require 'rbczmq'
+require 'zmq2'
 require 'rack/mongrel2/request'
 require 'rack/mongrel2/response'
 
@@ -7,25 +7,27 @@ module Rack
     class ConnectionDiedError < StandardError; end
     
     class Connection
-      CTX = ZMQ::Context.new(1)
+      CONTEXT = ::ZMQ::Context.new(1)
 
       def initialize(options)
         @uuid, @sub, @pub, @graceful_linger = options[:uuid], options[:recv], options[:send], options[:graceful_linger]
 
         # Connect to receive requests
-        @reqs = CTX.connect(:PULL, @sub)
-        @reqs.linger = 0
+        @incoming = CONTEXT.socket(::ZMQ::PULL)
+        @incoming.connect(@sub)
+        @incoming.setsocketopt(::ZMQ::LINGER, 0)
 
         # Connect to send responses
-        @resp = CTX.connect(:PUB, @pub)
-        @resp.identity = @uuid
-        @resp.linger = 0
+        @outgoing = CONTEXT.socket(::ZMQ::PUB)
+        @outgoing.connect(@pub)
+        @outgoing.setsocketopt(::ZMQ::IDENTITY, @uuid)
+        @outgoing.setsocketopt(::ZMQ::LINGER, 0)
       end
 
       def recv
         msg = nil
         begin
-          ready_sockets = ZMQ.select([@reqs], nil, nil, 30)
+          ready_sockets = ::ZMQ.select([@incoming], nil, nil, 30)
           if !ready_sockets.nil?
             ready_sockets[0].each do | socket |
               msg = socket.recv
@@ -33,25 +35,26 @@ module Rack
             end
           end
         rescue RuntimeError => e
+          $stderr.puts "[rack-mongrel2] Rescued from #{e.inspect}"
           raise ConnectionDiedError
         end
         msg
       end
 
       def reply(req, body, status = 200, headers = {})
-        resp = Response.new(@resp)
+        resp = Response.new(@outgoing)
         resp.send_http(req, body, status, headers)
         resp.close(req) if req.close?
       end
 
       def close
         if @graceful_linger
-          @reqs.linger = @graceful_linger
-          @resp.linger = @graceful_linger
+          @incoming.setsocketopt(::ZMQ::LINGER, @graceful_linger)
+          @outgoing.setsocketopt(::ZMQ::LINGER, @graceful_linger)
         end
-        @resp.close
-        @reqs.close
-        CTX.destroy
+        @outgoing.close
+        @incoming.close
+        CONTEXT.destroy
       end
     end
   end
