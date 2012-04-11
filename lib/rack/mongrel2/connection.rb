@@ -15,13 +15,13 @@ module Rack
         # Connect to receive requests
         @incoming = CONTEXT.socket(::ZMQ::PULL)
         @incoming.connect(@sub)
-        @incoming.setsocketopt(::ZMQ::LINGER, 0)
+        @incoming.setsockopt(::ZMQ::LINGER, 0)
 
         # Connect to send responses
         @outgoing = CONTEXT.socket(::ZMQ::PUB)
         @outgoing.connect(@pub)
-        @outgoing.setsocketopt(::ZMQ::IDENTITY, @uuid)
-        @outgoing.setsocketopt(::ZMQ::LINGER, 0)
+        @outgoing.setsockopt(::ZMQ::IDENTITY, @uuid)
+        @outgoing.setsockopt(::ZMQ::LINGER, 0)
       end
 
       def recv
@@ -49,12 +49,12 @@ module Rack
 
       def close
         if @graceful_linger
-          @incoming.setsocketopt(::ZMQ::LINGER, @graceful_linger)
-          @outgoing.setsocketopt(::ZMQ::LINGER, @graceful_linger)
+          @incoming.setsockopt(::ZMQ::LINGER, @graceful_linger)
+          @outgoing.setsockopt(::ZMQ::LINGER, @graceful_linger)
         end
         @outgoing.close
         @incoming.close
-        CONTEXT.destroy
+        CONTEXT.close
       end
     end
   end

@@ -1,6 +1,6 @@
-source 'http://rubygems.org'
+source :rubygems
 
 gemspec
 
 # For development
-gem 'yajl-ruby', '~> 0.7.8', :require => 'yajl'
+gem 'yajl-ruby'
